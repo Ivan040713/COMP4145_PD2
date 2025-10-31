@@ -1,3 +1,11 @@
+def calculate_rsi(data, period=14):
+    close = data['Close']
+    delta = close.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -109,7 +117,6 @@ def analyze_results(positions):
     print(f"Average Profit: {avg_profit:.2f}%")
 
     return positions
-
 
 # List of possible stock tickers (S&P 500 sample, can be expanded)
 SAMPLE_TICKERS = [
