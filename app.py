@@ -76,7 +76,8 @@ PAGES = [
     "Statistics",
     "Analysis",
     "AI-Powered Investment Chatbot",
-    "Formula teaching"
+    "Formula teaching",
+    "News Sentiment Analysis"
 ]
 
 st.sidebar.title("Navigation")
@@ -423,7 +424,9 @@ if page == "AI-Powered Investment Chatbot":
     
     Enter a stock name (e.g., 'GOOGL') to get company background information.
     """)
-    user_input = st.text_input("Enter a stock name:", "E.g. GOOGL")
+    selected = st.selectbox("Select Stock for Chatbot", SAMPLE_TICKERS, index=SAMPLE_TICKERS.index(st.session_state.get('selected_ticker', 'AAPL')) if st.session_state.get('selected_ticker', 'AAPL') in SAMPLE_TICKERS else 0)
+    st.session_state['selected_ticker'] = selected
+    user_input = selected
     if user_input:
         import re
         from difflib import get_close_matches
@@ -600,3 +603,56 @@ elif page == "Formula teaching":
 
 **Tip:** Always compare these metrics to industry averages and historical values. Use multiple indicators for a balanced view.
     """)
+
+elif page == "News Sentiment Analysis":
+    st.title("News Sentiment Analysis")
+    import requests
+    import json  # For pretty-printing the response
+
+    st.markdown("""
+    This page fetches news sentiment data for a selected stock using the Alpha Vantage API.
+    """)
+    API_KEY = "2DNXP04IWOPYJD3E"
+    # User selects ticker
+    selected = st.selectbox("Select Stock for News Sentiment", SAMPLE_TICKERS, index=SAMPLE_TICKERS.index(st.session_state.get('selected_ticker', 'AAPL')) if st.session_state.get('selected_ticker', 'AAPL') in SAMPLE_TICKERS else 0)
+    st.session_state['selected_ticker'] = selected
+    ticker = HK_TICKER_MAP[selected] if selected in HK_TICKER_MAP else selected
+
+    # Date input for news (default: yesterday)
+    import datetime
+    default_date = datetime.date.today() - datetime.timedelta(days=1)
+    date_input = st.date_input("Select news start date", value=default_date)
+    time_from = date_input.strftime("%Y%m%d") + "T0000"
+
+    url = (
+        "https://www.alphavantage.co/query?"
+        "function=NEWS_SENTIMENT"
+        f"&tickers={ticker}"
+        f"&time_from={time_from}"
+        "&limit=10"
+        f"&apikey={API_KEY}"
+    )
+
+    st.write(f"Fetching news sentiment data for {ticker}...")
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            st.subheader("Raw JSON Response")
+            st.code(json.dumps(data, indent=4), language="json")
+            # Optionally, display headlines and sentiment summary
+            if "feed" in data:
+                st.subheader("Top News Headlines & Sentiment")
+                for item in data["feed"]:
+                    st.markdown(f"**Headline:** {item.get('title', 'N/A')}")
+                    st.markdown(f"- Source: {item.get('source', 'N/A')}")
+                    st.markdown(f"- Published: {item.get('time_published', 'N/A')}")
+                    st.markdown(f"- Sentiment: {item.get('overall_sentiment_label', 'N/A')}")
+                    st.markdown(f"- Summary: {item.get('summary', 'N/A')}")
+                    st.markdown("---")
+            else:
+                st.info("No news feed data found in response.")
+        else:
+            st.error(f"Error: {response.status_code} - {response.text}")
+    except Exception as e:
+        st.error(f"Exception occurred while fetching news sentiment: {e}")
